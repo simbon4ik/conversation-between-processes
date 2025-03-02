@@ -39,8 +39,10 @@ int main(){
             memset(buf, '\0', BUFSIZE);     //Заполняем все байты терминирующим нулем
             if ( (len = read(file_descrp2, buf, BUFSIZE-1)) <= 0 ) {        //Считываем BUFSIZE - 1 символов из 2 файла fifo
                 perror("read");                                             //Если не получилось считать
+                close(file_descrp1);                                                  //Закрываем файловый дескриптор
                 close(file_descrp2);                                                  //Закрываем файловый дескриптор
                 remove(SECOND);                                             //Удаляем 2 файл fifo
+                remove(FIRST);                                              //Удаляем 1 файл fifo
                 return 3;
             }
             printf("Incomming message (%ld): %s\n", len, buf);
@@ -48,7 +50,8 @@ int main(){
             size_t bytes_written = write(file_descrp1, message, strlen(message)+1);                        //Отправляем её в 1 fifo
             if (bytes_written == -1){               //Проверка на ошибку записи
                 perror("write");
-                close(file_descrp1);
+                close(file_descrp1);                                                  //Закрываем файловый дескриптор
+                close(file_descrp2);                                                  //Закрываем файловый дескриптор
                 return 4;
             }
         }
@@ -65,8 +68,9 @@ int main(){
         while (1){
             memset(buf, '\0', BUFSIZE);     //Заполняем все байты терминирующим нулем
             if ( (len = read(file_descrp1, buf, BUFSIZE-1)) <= 0 ) {        //Считываем BUFSIZE - 1 символов из 1 файла fifo
-                perror("read");                                             //Если не получилось считать
-                close(file_descrp1);                                        //Закрываем файловый дескриптор
+                close(file_descrp1);                                                  //Закрываем файловый дескриптор
+                close(file_descrp2);                                                  //Закрываем файловый дескриптор
+                remove(SECOND);                                             //Удаляем 2 файл fifo
                 remove(FIRST);                                              //Удаляем 1 файл fifo
                 return 0;
             }
@@ -75,6 +79,7 @@ int main(){
             size_t bytes_written = write(file_descrp2, message, strlen(message)+1);                        //Отправляем её в 1 fifo
             if (bytes_written == -1){
                 perror("write");
+                close(file_descrp1);
                 close(file_descrp2);
                 return 4;
             }
