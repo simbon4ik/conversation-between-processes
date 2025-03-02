@@ -26,11 +26,11 @@ int main(){
 
     printf("first_pipe and second_pipe was created succesfully\n");
     if (fork() == 0){       //Блок кода для дочернего процесса (мы его считаем первым)
-        if ( (file_descrp1 = open(FIRST, O_WRONLY)) <= 0){      //Открываем первый fifo для записи
+        if ( (file_descrp1 = open(FIRST, O_WRONLY)) == -1){      //Открываем первый fifo для записи
             perror("open1");
             return 2;
         }
-        if ( (file_descrp2 = open(SECOND, O_RDONLY)) <= 0){     //Открываем второй fifo для чтения
+        if ( (file_descrp2 = open(SECOND, O_RDONLY)) == -1){     //Открываем второй fifo для чтения
             perror("open2");
             return 2;
         }
@@ -53,11 +53,11 @@ int main(){
             }
         }
     }else{              //Блок кода для родительского процесса (его считаем вторым)
-        if ( (file_descrp2 = open(SECOND, O_WRONLY)) <= 0){      //Открываем второй fifo для записи
+        if ( (file_descrp2 = open(SECOND, O_WRONLY)) == -1){      //Открываем второй fifo для записи
             perror("open2");
             return 2;
         }
-        if ( (file_descrp1 = open(FIRST, O_RDONLY)) <= 0){     //Открываем первый fifo для чтения
+        if ( (file_descrp1 = open(FIRST, O_RDONLY)) == -1){     //Открываем первый fifo для чтения
             perror("open1");
             return 2;
         }
