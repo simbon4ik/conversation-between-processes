@@ -10,9 +10,32 @@
 #define SECOND "/tmp/second_pipe"
 #define BUFSIZE 50
 
+void process_conversation(int file_descrp2, int file_descrp1) {             //Диалог процесса
+        size_t len = 0;     //Сколько символов в сообщении
+        char buf[BUFSIZE];  //Куда будем считывать сообщение процессов
+        while (1){
+            memset(buf, '\0', BUFSIZE);                                     //Заполняем все байты терминирующим нулем
+            if ( (len = read(file_descrp2, buf, BUFSIZE-1)) <= 0 ) {        //Считываем BUFSIZE - 1 символов из 2 файла fifo
+                perror("read");                                             //Если не получилось считать
+                close(file_descrp1);                                        //Закрываем файловый дескриптор
+                close(file_descrp2);                                        //Закрываем файловый дескриптор
+                remove(SECOND);                                             //Удаляем 2 файл fifo
+                remove(FIRST);                                              //Удаляем 1 файл fifo
+                return;
+            }
+            printf("Incomming message (%ld): %s\n", len, buf);
+            char message [] = "test message";                                           //Тестовая фраза
+            size_t bytes_written = write(file_descrp1, message, strlen(message)+1);                        //Отправляем её в 1 fifo
+            if (bytes_written == -1){                                       //Проверка на ошибку записи
+                perror("write");
+                close(file_descrp1);                                                  //Закрываем файловый дескриптор
+                close(file_descrp2);                                                  //Закрываем файловый дескриптор
+                return;
+            }
+        }
+}
+
 int main(){
-    char buf[BUFSIZE];  //Куда будем считывать сообщение процессов
-    size_t len = 0;     //Сколько символов в сообщении
     int file_descrp1 = 0;   //Файловый дескриптор для дальнейшей работы с файлом
     int file_descrp2 = 0;
     if (mkfifo(FIRST, 0666) == -1) {     //Создаем fifo файл для первого процесса (он в него записывает, читает из второго fifo файла)
@@ -21,7 +44,6 @@ int main(){
     }
     if (mkfifo(SECOND, 0666) == -1){     //Создаем fifo файл для второго процесса (можно проверку объединить в одну, но так по мне читабельнее)
         perror("mkfifo2");                            //Проверка, если не получилось создать
-        close(FIRST);               //Закрываем первый fifo если второй не удалось создать
         return 1;
     }
 
@@ -35,27 +57,8 @@ int main(){
             perror("open2");
             return 2;
         }
+        process_conversation(file_descrp1, file_descrp2);       //Общение для первого процесса
 
-        while (1){
-            memset(buf, '\0', BUFSIZE);     //Заполняем все байты терминирующим нулем
-            if ( (len = read(file_descrp2, buf, BUFSIZE-1)) <= 0 ) {        //Считываем BUFSIZE - 1 символов из 2 файла fifo
-                perror("read");                                             //Если не получилось считать
-                close(file_descrp1);                                                  //Закрываем файловый дескриптор
-                close(file_descrp2);                                                  //Закрываем файловый дескриптор
-                remove(SECOND);                                             //Удаляем 2 файл fifo
-                remove(FIRST);                                              //Удаляем 1 файл fifo
-                return 3;
-            }
-            printf("Incomming message (%ld): %s\n", len, buf);
-            char message [] = "test message";                                           //Тестовая фраза
-            size_t bytes_written = write(file_descrp1, message, strlen(message)+1);                        //Отправляем её в 1 fifo
-            if (bytes_written == -1){               //Проверка на ошибку записи
-                perror("write");
-                close(file_descrp1);                                                  //Закрываем файловый дескриптор
-                close(file_descrp2);                                                  //Закрываем файловый дескриптор
-                return 4;
-            }
-        }
     }else{              //Блок кода для родительского процесса (его считаем вторым)
         if ( (file_descrp2 = open(SECOND, O_WRONLY)) == -1){      //Открываем второй fifo для записи
             perror("open2");
@@ -65,28 +68,15 @@ int main(){
             perror("open1");
             return 2;
         }
-
-        while (1){
-            memset(buf, '\0', BUFSIZE);     //Заполняем все байты терминирующим нулем
-            if ( (len = read(file_descrp1, buf, BUFSIZE-1)) <= 0 ) {        //Считываем BUFSIZE - 1 символов из 1 файла fifo
-                close(file_descrp1);                                                  //Закрываем файловый дескриптор
-                close(file_descrp2);                                                  //Закрываем файловый дескриптор
-                remove(SECOND);                                             //Удаляем 2 файл fifo
-                remove(FIRST);                                              //Удаляем 1 файл fifo
-                return 0;
-            }
-            printf("Incomming message (%ld): %s\n", len, buf);
-            char message[] = "test message";                                           //Тестовая фраза
-            size_t bytes_written = write(file_descrp2, message, strlen(message)+1);                        //Отправляем её в 1 fifo
-            if (bytes_written == -1){
-                perror("write");
-                close(file_descrp1);
-                close(file_descrp2);
-                return 4;
-            }
-        }
+        
+        process_conversation(file_descrp2, file_descrp1);       //Общение для второго процесса
 
     }
+
+    close(file_descrp1);                                        //Закрываем файловый дескриптор
+    close(file_descrp2);                                        //Закрываем файловый дескриптор
+    remove(SECOND);                                             //Удаляем 2 файл fifo
+    remove(FIRST);                                              //Удаляем 1 файл fifo
+
     return 0;
 }
-//to do one func
